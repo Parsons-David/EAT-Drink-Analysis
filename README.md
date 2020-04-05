@@ -19,4 +19,5 @@ Usage:
 ```
 
 Example Output:
+
 ![Example Output](gifs/05-04-2020-animation.gif "Output")
