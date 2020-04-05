@@ -1,0 +1,18 @@
+##!/usr/bin/env bash
+
+# Set Path to Firebase Crdentials
+FIREBASE_CREDENTIALS=credentials/naked-cowboys-firebase-adminsdk-ssyrs-890d6cfba0.json
+
+# Date Stamp
+DATE_STAMP=$(date +'%m-%d-%Y-%s')
+
+# Output File Path
+OUTPUT_PATH=backups/eat-${DATE_STAMP}-backup-data.json
+
+# Log File Path
+LOG_FILE=logs/retrieve_data/${DATE_STAMP}.log
+
+# Export Database
+firestore-export -p -a ${FIREBASE_CREDENTIALS} -b ${OUTPUT_PATH} >> ${LOG_FILE} 2>&1
+
+echo ${OUTPUT_PATH}

@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+import argparse
+from datetime import datetime, timedelta
+import json
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
+year_key = "Year"
+total_key = "Total"
+whole_weekend_key = "Weekend"
+
+
+def day_by_day_totals(users):
+    days = get_since_new_year_date_range()
+
+    summary = {
+        year_key: {
+            total_key: 0
+        }
+    }
+    for day in days:
+        summary[str(day)] = {
+            total_key: 0
+        }
+        for name, drinks in users.items():
+            user_date_total = get_date_drink_count(drinks, day)
+            user_cumulative_total = summary.get(str(day - timedelta(1)), {}).get(name, 0) + user_date_total
+            increment_if_not_empty(summary[str(day)], name, user_cumulative_total)
+            increment_if_not_empty(summary[year_key], name, user_date_total)
+            increment_if_not_empty(summary[str(day)], total_key, user_cumulative_total)
+            increment_if_not_empty(summary[year_key], total_key, user_date_total)
+    return summary
+
+
+def extract_drink(drink_json):
+    timestamp = datetime.fromtimestamp(drink_json["timestamp"]["value"]["_seconds"])
+    name = drink_json["description"]
+    return {
+        "name": name,
+        "timestamp": timestamp
+    }
+
+
+def extract_user_drinks(user_json):
+    name = user_json["name"]
+    drinks = user_json["__collections__"]["drinks"].values()
+    return {
+        name: [extract_drink(drink) for drink in drinks]
+    }
+
+
+def get_date_drink_count(drinks, date):
+    return len(list(filter(lambda d: (d["timestamp"] - date).days == 0, drinks)))
+
+
+def get_since_new_year_date_range():
+    start_date = datetime(2020, 1, 1, 0, 0, 0)
+    days_since_new_year = datetime.today() - start_date
+    days = [start_date + timedelta(i) for i in range(days_since_new_year.days + 1)]
+    return days
+
+
+def increment_if_not_empty(m, k, v):
+    if m.get(k):
+        m[k] = m[k] + v
+    else:
+        m[k] = v
+
+
+def load_json_file(json_file_path):
+    with open(json_file_path) as f:
+        data = json.load(f)
+    return data
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file", help="Path to Back Up File", required=True)
+    args = parser.parse_args()
+    return args
+
+
+def plot_day_by_day_pics(s):
+    fig, ax = plt.subplots()  # Create a figure containing a single axes.
+    days = get_since_new_year_date_range()
+    print(len(days))
+    for d in range(0, len(days)):
+        x_axis = days[0:d]
+        for name in s['Year'].keys():
+            y_axis = []
+            if name == 'Total':
+                continue
+            for day in x_axis:
+                if day == 'Year':
+                    continue
+                y_axis.append(s[str(day)][name])
+            ax.plot(x_axis, y_axis)  # Plot some data on the axes.
+        plt.savefig("gif_pics/" + str(len(x_axis)) + ".png")
+
+
+def plot_day_by_day_animate(s):
+    fig, ax = plt.subplots()  # Create a figure containing a single axes.
+    days = get_since_new_year_date_range()
+    print(len(days))
+    x_axis = days
+
+    def gen_y_axis(name):
+        y = []
+        for dy in x_axis:
+            if dy == 'Year':
+                continue
+            y.append(s[str(dy)][name])
+        return y
+
+    y_axi = []
+    for name in s["Year"].keys():
+        if name == total_key:
+            continue
+        y_axi.append(gen_y_axis(name))
+
+    day = 0
+
+    def gen_frame(fd):
+        last = None
+        for y_axis in y_axi:
+            last = ax.plot(x_axis[0:fd], y_axis[0:fd])
+        return last
+
+    ani = animation.FuncAnimation(fig, gen_frame, len(days), repeat=True, repeat_delay=5000, interval=100)
+    ani.save("gifs/" + days[-1].strftime("%d-%m-%Y") + "-animation.gif")
+
+
+def wedding_weekend_data(users):
+    days = [5, 6, 7, 8, 9]
+    summary = {
+        whole_weekend_key: {
+            total_key: 0
+        }
+    }
+    for day in days:
+        date = datetime(2020, 3, day, 5)
+        summary[str(date)] = {
+            total_key: 0
+        }
+        for name, drinks in users.items():
+            user_date_total = get_date_drink_count(drinks, date)
+            increment_if_not_empty(summary[str(date)], name, user_date_total)
+            increment_if_not_empty(summary[whole_weekend_key], name, user_date_total)
+            increment_if_not_empty(summary[str(date)], total_key, user_date_total)
+            increment_if_not_empty(summary[whole_weekend_key], total_key, user_date_total)
+    return json.dumps(summary)
+
+
+def main():
+    args = parse_arguments()
+    input_file = args.file
+    json_data = load_json_file(input_file)
+    collections = json_data["__collections__"]
+    user_jsons = collections["eat_users"]
+    users = {}
+    for user_json in user_jsons.values():
+        users.update(extract_user_drinks(user_json))
+    trapp_wedding_summary = wedding_weekend_data(users)
+    day_by_day_summary = day_by_day_totals(users)
+    plot_day_by_day_animate(day_by_day_summary)
+
+
+if __name__ == '__main__':
+    main()

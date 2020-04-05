@@ -1,0 +1,5 @@
+##!/usr/bin/env bash
+
+LATEST_BACKUP_FILE_PATH=$(./fetch_backup_data)
+
+./analyze --file ${LATEST_BACKUP_FILE_PATH}
