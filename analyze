@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import itertools
 from datetime import datetime, timedelta
 import json
 import matplotlib.pyplot as plt
@@ -27,14 +28,15 @@ def bar_chart_race(intervals, user_data_at_intervals):
             k: v for k, v in sorted(user_data_at_interval.items(), key=lambda item: item[1])
         }
         matched_colors = [user_colors[name] for name in sorted_user_data_at_interval.keys()]
-        print(json.dumps(sorted_user_data_at_interval))
-        print(list(sorted_user_data_at_interval.keys()))
-        print(matched_colors)
+        # print(json.dumps(sorted_user_data_at_interval))
+        # print(list(sorted_user_data_at_interval.keys()))
+        # print(matched_colors)
 
         ax.clear()
+        ax.text(1, 0.4, str(interval), transform=ax.transAxes, size=30, ha='right')
         return ax.barh(list(sorted_user_data_at_interval.keys()), list(sorted_user_data_at_interval.values()), color=matched_colors)
 
-    ani = animation.FuncAnimation(fig, gen_frame, len(intervals), repeat=True, repeat_delay=5000, interval=100)
+    ani = animation.FuncAnimation(fig, gen_frame, len(intervals), repeat=True, repeat_delay=5000, interval=70)
     ani.save("gifs/bar-race-" + intervals[-1].strftime("%d-%m-%Y") + "-animation.gif")
 
 
@@ -95,6 +97,29 @@ def increment_if_not_empty(m, k, v):
         m[k] = v
 
 
+def line_plot_race(intervals, user_data_at_intervals):
+    fig, ax = plt.subplots(figsize=(15, 8))
+
+    user_colors = {}
+    for user in user_data_at_intervals.keys():
+        user_colors[user] = random_color()
+
+    def gen_frame(i):
+        ax.clear()
+        last = None
+        for name, data in user_data_at_intervals.items():
+            last = ax.plot(intervals[0:i], list(data.values())[0:i])
+        # print(json.dumps(sorted_user_data_at_interval))
+        # print(list(sorted_user_data_at_interval.keys()))
+        # print(matched_colors)
+
+        ax.text(0.5, 1, str(intervals[i]), transform=ax.transAxes, size=30, ha='left')
+        return last
+
+    ani = animation.FuncAnimation(fig, gen_frame, len(intervals), repeat=True, repeat_delay=5000, interval=10)
+    ani.save("gifs/line-plot-race-" + intervals[-1].strftime("%d-%m-%Y") + "-animation.gif")
+
+
 def load_json_file(json_file_path):
     with open(json_file_path) as f:
         data = json.load(f)
@@ -129,7 +154,6 @@ def plot_day_by_day_pics(s):
 def plot_day_by_day_animate(s):
     fig, ax = plt.subplots()  # Create a figure containing a single axes.
     days = get_since_new_year_date_range()
-    print(len(days))
     x_axis = days
 
     def gen_y_axis(name):
@@ -162,6 +186,19 @@ def random_color():
     return "#%06x" % random.randint(0, 0xFFFFFF)
 
 
+def summarize_by_drink_timestamp(j):
+    user_drink_timestamps = {ji["name"]: list(map(lambda d: datetime.fromtimestamp(d["timestamp"]['value']["_seconds"]), ji["__collections__"]["drinks"].values())) for ji in j.values()}
+    all_timestamps = list(set(itertools.chain.from_iterable(user_drink_timestamps.values())))
+    all_timestamps.sort()
+    summary = {}
+    for n in user_drink_timestamps.keys():
+        uts = {}
+        for t in all_timestamps:
+            uts[t] = (len([dt for dt in user_drink_timestamps[n] if dt <= t]))
+        summary[n] = uts
+    return summary
+
+
 def wedding_weekend_data(users):
     days = [5, 6, 7, 8, 9]
     summary = {
@@ -188,23 +225,16 @@ def main():
     input_file = args.file
     json_data = load_json_file(input_file)
     collections = json_data["__collections__"]
-    user_jsons = collections["eat_users"]
+    users_collection = collections["eat_users"]
     users = {}
-    for user_json in user_jsons.values():
+    for user_json in users_collection.values():
         users.update(extract_user_drinks(user_json))
     # trapp_wedding_summary = wedding_weekend_data(users)
     day_by_day_summary = day_by_day_totals(users)
     # plot_day_by_day_animate(day_by_day_summary)
-    del day_by_day_summary["Year"]
-    user_summary = {}
-    for day, day_vals in day_by_day_summary.items():
-        for user in day_vals.keys():
-            if not user_summary.get(user):
-                user_summary[user] = {day: day_vals.get(user)}
-            else:
-                user_summary[user][day] = day_vals.get(user)
-    del user_summary[total_key]
-    bar_chart_race(list(day_by_day_summary.keys()), user_summary)
+    user_summaries_on_drink_timestamp_interval = summarize_by_drink_timestamp(users_collection)
+    bar_chart_race(list(user_summaries_on_drink_timestamp_interval.get("David Parsons").keys()), user_summaries_on_drink_timestamp_interval)
+    line_plot_race(list(user_summaries_on_drink_timestamp_interval.get("David Parsons").keys()), user_summaries_on_drink_timestamp_interval)
 
 
 if __name__ == '__main__':

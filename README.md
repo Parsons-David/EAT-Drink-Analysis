@@ -1,6 +1,6 @@
 # Drink Analysis
 
-Uses `matplot` $ `firestore-export` to run analysis on EAT Drink Data
+Uses `matplotlib` $ `firestore-export` to run analysis on EAT Drink Data
 
 Usage:
 ```bash
@@ -18,6 +18,10 @@ Usage:
 ./analyze --file <path_to_backup_file>
 ```
 
-Example Output:
+Example Plot Race:
 
-![Example Output](gifs/05-04-2020-animation.gif "Output")
+![Example Plot Race](gifs/line-plot-race-05-04-2020-animation.gif "Example Plot Race")
+
+Example Bar Race:
+
+![Example Bar Race](gifs/bar-race-05-04-2020-animation.gif "Example Bar Race")
