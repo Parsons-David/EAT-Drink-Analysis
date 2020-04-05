@@ -4,10 +4,38 @@ from datetime import datetime, timedelta
 import json
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import random
 
 year_key = "Year"
 total_key = "Total"
 whole_weekend_key = "Weekend"
+
+
+def bar_chart_race(intervals, user_data_at_intervals):
+    fig, ax = plt.subplots(figsize=(15, 8))
+
+    user_colors = {}
+    for user in user_data_at_intervals.keys():
+        user_colors[user] = random_color()
+
+    def gen_frame(i):
+        interval = intervals[i]
+        user_data_at_interval = {}
+        for name, data in user_data_at_intervals.items():
+            user_data_at_interval[name] = data[interval]
+        sorted_user_data_at_interval = {
+            k: v for k, v in sorted(user_data_at_interval.items(), key=lambda item: item[1])
+        }
+        matched_colors = [user_colors[name] for name in sorted_user_data_at_interval.keys()]
+        print(json.dumps(sorted_user_data_at_interval))
+        print(list(sorted_user_data_at_interval.keys()))
+        print(matched_colors)
+
+        ax.clear()
+        return ax.barh(list(sorted_user_data_at_interval.keys()), list(sorted_user_data_at_interval.values()), color=matched_colors)
+
+    ani = animation.FuncAnimation(fig, gen_frame, len(intervals), repeat=True, repeat_delay=5000, interval=100)
+    ani.save("gifs/bar-race-" + intervals[-1].strftime("%d-%m-%Y") + "-animation.gif")
 
 
 def day_by_day_totals(users):
@@ -19,15 +47,15 @@ def day_by_day_totals(users):
         }
     }
     for day in days:
-        summary[str(day)] = {
+        summary[day] = {
             total_key: 0
         }
         for name, drinks in users.items():
             user_date_total = get_date_drink_count(drinks, day)
-            user_cumulative_total = summary.get(str(day - timedelta(1)), {}).get(name, 0) + user_date_total
-            increment_if_not_empty(summary[str(day)], name, user_cumulative_total)
+            user_cumulative_total = summary.get(day - timedelta(1), {}).get(name, 0) + user_date_total
+            increment_if_not_empty(summary[day], name, user_cumulative_total)
             increment_if_not_empty(summary[year_key], name, user_date_total)
-            increment_if_not_empty(summary[str(day)], total_key, user_cumulative_total)
+            increment_if_not_empty(summary[day], total_key, user_cumulative_total)
             increment_if_not_empty(summary[year_key], total_key, user_date_total)
     return summary
 
@@ -130,6 +158,10 @@ def plot_day_by_day_animate(s):
     ani.save("gifs/" + days[-1].strftime("%d-%m-%Y") + "-animation.gif")
 
 
+def random_color():
+    return "#%06x" % random.randint(0, 0xFFFFFF)
+
+
 def wedding_weekend_data(users):
     days = [5, 6, 7, 8, 9]
     summary = {
@@ -160,9 +192,19 @@ def main():
     users = {}
     for user_json in user_jsons.values():
         users.update(extract_user_drinks(user_json))
-    trapp_wedding_summary = wedding_weekend_data(users)
+    # trapp_wedding_summary = wedding_weekend_data(users)
     day_by_day_summary = day_by_day_totals(users)
-    plot_day_by_day_animate(day_by_day_summary)
+    # plot_day_by_day_animate(day_by_day_summary)
+    del day_by_day_summary["Year"]
+    user_summary = {}
+    for day, day_vals in day_by_day_summary.items():
+        for user in day_vals.keys():
+            if not user_summary.get(user):
+                user_summary[user] = {day: day_vals.get(user)}
+            else:
+                user_summary[user][day] = day_vals.get(user)
+    del user_summary[total_key]
+    bar_chart_race(list(day_by_day_summary.keys()), user_summary)
 
 
 if __name__ == '__main__':
