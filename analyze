@@ -10,6 +10,9 @@ import random
 year_key = "Year"
 total_key = "Total"
 whole_weekend_key = "Weekend"
+# Set up formatting for the movie files
+Writer = animation.writers['ffmpeg']
+writer = Writer(fps=15, metadata=dict(artist='David Parsons'), bitrate=1800)
 
 
 def bar_chart_race(intervals, user_data_at_intervals):
@@ -37,7 +40,7 @@ def bar_chart_race(intervals, user_data_at_intervals):
         return ax.barh(list(sorted_user_data_at_interval.keys()), list(sorted_user_data_at_interval.values()), color=matched_colors)
 
     ani = animation.FuncAnimation(fig, gen_frame, len(intervals), repeat=True, repeat_delay=5000, interval=70)
-    ani.save("gifs/bar-race-" + intervals[-1].strftime("%d-%m-%Y") + "-animation.gif")
+    ani.save("mp4/bar-race-" + intervals[-1].strftime("%d-%m-%Y") + "-animation.mp4", writer=writer)
 
 
 def day_by_day_totals(users):
@@ -117,7 +120,7 @@ def line_plot_race(intervals, user_data_at_intervals):
         return last
 
     ani = animation.FuncAnimation(fig, gen_frame, len(intervals), repeat=True, repeat_delay=5000, interval=10)
-    ani.save("gifs/line-plot-race-" + intervals[-1].strftime("%d-%m-%Y") + "-animation.gif")
+    ani.save("mp4/line-plot-race-" + intervals[-1].strftime("%d-%m-%Y") + "-animation.mp4", writer=writer)
 
 
 def load_json_file(json_file_path):

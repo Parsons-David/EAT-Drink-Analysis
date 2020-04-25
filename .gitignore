@@ -1,6 +1,8 @@
 credentials/*
 backups/*
 logs/retrieve_data/*
+mp4/*
+gifs/*
 
 **/.DS_Store
 
