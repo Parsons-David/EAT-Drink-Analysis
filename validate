@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+import argparse
+import itertools
+from datetime import datetime, timedelta
+import json
+
+
+def extract_drink(drink_json):
+    timestamp = datetime.fromtimestamp(drink_json["timestamp"]["value"]["_seconds"])
+    name = drink_json["description"]
+    return {
+        "name": name,
+        "timestamp": timestamp
+    }
+
+
+def extract_user_drinks(user_json):
+    name = user_json["name"]
+    drinks = user_json["__collections__"]["drinks"].values()
+    return {
+        name: [extract_drink(drink) for drink in drinks]
+    }
+
+
+def get_date_drink_count(drinks, date):
+    return len(list(filter(lambda d: (d["timestamp"] - date).days == 0, drinks)))
+
+
+def increment_if_not_empty(m, k, v):
+    if m.get(k):
+        m[k] = m[k] + v
+    else:
+        m[k] = v
+
+
+def load_json_file(json_file_path):
+    with open(json_file_path) as f:
+        data = json.load(f)
+    return data
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file", help="Path to Back Up File", required=True)
+    args = parser.parse_args()
+    return args
+
+
+def summarize_by_drink_timestamp(j):
+    user_drink_timestamps = {ji["name"]: list(map(lambda d: datetime.fromtimestamp(d["timestamp"]['value']["_seconds"]), ji["__collections__"]["drinks"].values())) for ji in j.values()}
+    all_timestamps = list(set(itertools.chain.from_iterable(user_drink_timestamps.values())))
+    all_timestamps.sort()
+    summary = {}
+    for n in user_drink_timestamps.keys():
+        uts = {}
+        for t in all_timestamps:
+            uts[t] = (len([dt for dt in user_drink_timestamps[n] if dt <= t]))
+        summary[n] = uts
+    return summary
+
+
+def main():
+    args = parse_arguments()
+    input_file = args.file
+    json_data = load_json_file(input_file)
+    sum_in_meters = 0
+    for activity in json_data:
+        if (activity.get("type") == "Run"):
+            sum_in_meters += activity.get("distance")
+    print(sum_in_meters / 1609.34)
+
+    # collections = json_data["__collections__"]
+    # users_collection = collections["eat_users"]
+    # users = {}
+    # for user_json in users_collection.values():
+    #     name = user_json.get("name")
+    #     if not user_json.get("__collections__").get("activities"):
+    #         continue
+    #     print(name)
+    #     user_activities = user_json.get("__collections__").get("activities")
+    #     runTotalInMeters = 0
+    #     for act in user_activities.values():
+    #         if act.get("type") == "Run":
+    #             runTotalInMeters += act.get("distance")
+    #             print(type(act.get("distance")))
+    #             print(act.get("distance"))
+    #     print(runTotalInMeters / 1600.0)
+
+
+if __name__ == '__main__':
+    main()

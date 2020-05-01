@@ -3,6 +3,7 @@ backups/*
 logs/retrieve_data/*
 mp4/*
 gifs/*
+strava_api/
 
 **/.DS_Store
 
